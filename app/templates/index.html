@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎵 Spotify Mini Demo</title>
+  <style>
+    body {
+      background: #fef6f6;
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      color: #4a4a4a;
+    }
+
+    h1 {
+      color: #ff6f91;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      margin-top: 1rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    input[type="text"] {
+      padding: 0.5rem 1rem;
+      border: 2px solid #ff6f91;
+      border-radius: 25px;
+      outline: none;
+      width: 250px;
+      font-size: 1rem;
+      transition: 0.3s;
+    }
+    input[type="text"]:focus {
+      border-color: #ff3c78;
+      box-shadow: 0 0 10px #ff3c78aa;
+    }
+
+    button {
+      background: #ff6f91;
+      border: none;
+      color: white;
+      padding: 0.6rem 1.4rem;
+      margin-left: 0.5rem;
+      border-radius: 25px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #ff3c78;
+    }
+
+    .results {
+      margin-top: 2rem;
+      max-width: 600px;
+      width: 100%;
+      background: white;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      box-shadow: 0 8px 24px rgba(255, 111, 145, 0.15);
+    }
+
+    .item {
+      border-bottom: 1px solid #eee;
+      padding: 0.5rem 0;
+    }
+    .item:last-child {
+      border-bottom: none;
+    }
+
+    a {
+      color: #ff6f91;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .loading {
+      margin-top: 1rem;
+      font-style: italic;
+      color: #ff3c78;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎵 Spotify Mini Demo</h1>
+
+  <div>
+    <label for="artistInput">Search Albums by Artist:</label><br />
+    <input type="text" id="artistInput" placeholder="e.g., Taylor Swift" />
+    <button onclick="fetchAlbums()">Search</button>
+  </div>
+
+  <div>
+    <label for="trackInput">Search Tracks by Name:</label><br />
+    <input type="text" id="trackInput" placeholder="e.g., Love Story" />
+    <button onclick="fetchTracks()">Search</button>
+  </div>
+
+  <div id="loading" class="loading" style="display:none;">Loading...</div>
+
+  <div id="results" class="results"></div>
+
+  <script>
+    const resultsDiv = document.getElementById('results');
+    const loadingDiv = document.getElementById('loading');
+
+    function showLoading(show) {
+      loadingDiv.style.display = show ? 'block' : 'none';
+      resultsDiv.innerHTML = '';
+    }
+
+    async function fetchAlbums() {
+      const artistInput = document.getElementById('artistInput');
+      const resultsDiv = document.getElementById('results');
+      const artist = artistInput.value.trim();
+
+      if (!artist) {
+        alert('Please enter an artist name!');
+        return;
+      }
+
+      resultsDiv.innerHTML = '<p>Loading...</p>'; // Optional loading state
+
+      try {
+        const response = await fetch(`/artist-albums?artist_name=${encodeURIComponent(artist)}`);
+        if (!response.ok) {
+          throw new Error(`Server responded with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.albums || data.albums.length === 0) {
+          resultsDiv.innerHTML = `<p>No albums found for <strong>${artist}</strong>.</p>`;
+          return;
+        }
+
+        resultsDiv.innerHTML = `
+          <h2>Albums by ${artist}:</h2>
+          ${data.albums.map(album => `
+            <div class="item">
+              <strong>${album.name}</strong> (${album.release_date})<br/>
+              <a href="${album.spotify_url}" target="_blank">Listen on Spotify</a>
+            </div>
+          `).join('')}
+        `;
+      } catch (err) {
+        console.error('Fetch error:', err);
+        resultsDiv.innerHTML = `<p style="color:red;">❌ Failed to fetch albums. Error: ${err.message}</p>`;
+      }
+    }
+
+
+    async function fetchTracks() {
+      const track = document.getElementById('trackInput').value.trim();
+      if (!track) {
+        alert('Please enter a track name!');
+        return;
+      }
+      showLoading(true);
+      try {
+        const response = await fetch(`/search-track?track_name=${encodeURIComponent(track)}`);
+        if (!response.ok) throw new Error('Error fetching tracks');
+        const data = await response.json();
+
+        showLoading(false);
+        if (data.length === 0) {
+          resultsDiv.innerHTML = `<p>No tracks found for <strong>${track}</strong>.</p>`;
+          return;
+        }
+
+        resultsDiv.innerHTML = `<h2>Tracks matching "${track}":</h2>` +
+          data.map(track => `
+            <div class="item">
+              <strong>${track.track_name}</strong> by ${track.artist}<br/>
+              <a href="${track.spotify_url}" target="_blank">Listen on Spotify</a>
+            </div>
+          `).join('');
+      } catch (err) {
+        showLoading(false);
+        resultsDiv.innerHTML = `<p style="color:red;">Failed to fetch tracks. Try again.</p>`;
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
